@@ -14,6 +14,7 @@ from neighbors import get_neighbors
 sys.path.append("./features")
 ###### IMPORT FEATURES HERE
 import centrality
+import hydrophobicity
 ###### END OF FEATURE IMPORT
 
 def featurize(pdb_file):
@@ -28,6 +29,7 @@ def featurize(pdb_file):
 
     ##### CALL INDIVIDUAL FEATURE FUNCTIONS HERE
     print(centrality.feature(pdb_id,pdb_file))
+    print(hydrophobicity.feature(pdb_id,pdb_file))
     ##### END OF FEATURE CALLING
 
     # OUTLINE
