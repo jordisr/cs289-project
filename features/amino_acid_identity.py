@@ -16,11 +16,13 @@ def feature(chain):
     for residue in chain:
         
         index=residue.get_id()[1]
-        samples[index]={"isAla":0, "isArg":0, "isAsn":0, "isAsp":0, 
-                    "isCys":0, "isGln":0, "isGlu":0, "isGly":0,
-                    "isHis":0, "isIle":0, "isLeu":0, "isLys":0, 
-                    "isMet":0, "isPhe":0, "isPro":0, "isSer":0, 
-                    "isThr":0, "isTrp":0, "isTyr":0, "isVal":0}
+        
+        #print(index)
+        samples[index]={"isALA":0, "isARG":0, "isASN":0, "isASP":0, 
+                    "isCYS":0, "isGLN":0, "isGLU":0, "isGLY":0,
+                    "isHIS":0, "isILE":0, "isLEU":0, "isLYS":0, 
+                    "isMET":0, "isPHE":0, "isPRO":0, "isSER":0, 
+                    "isTHR":0, "isTRP":0, "isTYR":0, "isVAL":0}
     
         amino_acid=residue.get_resname()
         samples[index]["is"+str(amino_acid)]=1
@@ -28,8 +30,8 @@ def feature(chain):
     return samples
 
 def feature_names():
-    return ["isAla", "isArg", "isAsn", "isAsp", "isCys", 
-            "isGln", "isGlu", "isGly", "isHis", "isIle", 
-            "isLeu", "isLys", "isMet", "isPhe", "isPro", 
-            "isSer", "isThr", "isTrp", "isTyr", "isVal"]
+    return ["isALA", "isARG", "isASN", "isASP", "isCYS", 
+            "isGLN", "isGLU", "isGLY", "isHIS", "isILE", 
+            "isLEU", "isLYS", "isMET", "isPHE", "isPRO", 
+            "isSER", "isTHR", "isTRP", "isTYR", "isVAL"]
     
