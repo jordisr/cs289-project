@@ -7,10 +7,7 @@ Outputs three-letter amino acid identity based on FASTA file input.
 from Bio import SeqIO
 import sys, re
 
-def feature(BioPD):
-    
-    #read in BioPD sequence
-    chain=BioPD[0]["A"]
+def feature(chain):
     
     #initialize dict of dict
     samples=dict()
