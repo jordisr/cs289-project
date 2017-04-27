@@ -14,7 +14,20 @@ from neighbors import get_neighbors
 sys.path.append("./features")
 ###### IMPORT FEATURES HERE
 import centrality
+import hydrophobicity
 ###### END OF FEATURE IMPORT
+
+# just a placeholder to get us started
+class protein_features:
+    def __init__(self):
+        self.feature_table = dict()
+    def add(self, feature_output):
+        # does not check for key overlap!
+        for key in feature_output:
+            if key in self.feature_table:
+                self.feature_table[key] = {**self.feature_table[key], **feature_output[key]}
+            else:
+                self.feature_table[key] = feature_output[key]
 
 def featurize(pdb_file):
 
@@ -26,16 +39,27 @@ def featurize(pdb_file):
 
     print("-- STAND BACK -- FEATURIZING, FOOL!")
 
-    ##### CALL INDIVIDUAL FEATURE FUNCTIONS HERE
-    print(centrality.feature(pdb_id,pdb_file))
-    ##### END OF FEATURE CALLING
+    # list of feature script names
+    module_list = [centrality, hydrophobicity]
+
+    # data structure to abstract details of feature scripts
+    protein = protein_features()
+    print(protein.feature_table)
+
+    # merge output onto larger data structure
+    for module in module_list:
+        protein.add(module.feature(pdb_id, pdb_file))
+
+    # get list of neighbors from neighbors.py
+    neighbors = get_neighbors(pdb_id,pdb_file)
+    #print(neighbors)
+
+    print(protein.feature_table) # DEBUG
 
     # OUTLINE
-    # - Get list of neighbors from neighbors.py
-    neighbors = get_neighbors(pdb_id,pdb_file)
-    print(neighbors)
     # - Append/average features from neighbors to make large table
     # - return data structure (pandas object?)
+
     return None
 
 if __name__ == '__main__':
