@@ -19,7 +19,6 @@ def feature(BioPD):
     for residue in chain:
         
         index=residue.get_id()[1]
-        print(index)
         samples[index]={"isAla":0, "isArg":0, "isAsn":0, "isAsp":0, 
                     "isCys":0, "isGln":0, "isGlu":0, "isGly":0,
                     "isHis":0, "isIle":0, "isLeu":0, "isLys":0, 
