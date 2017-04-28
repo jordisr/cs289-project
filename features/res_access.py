@@ -20,9 +20,9 @@ def feature(chain):
     for residue in hse_cn:
         exposure=residue[1]   
         res_index=residue[0].get_id()[1]
-        samples[res_index]={"exposure":exposure}
+        samples[res_index]={"res_access":exposure}
 
     return samples
 
 def feature_names():
-    return ["exposure"]
+    return ["res_access"]
