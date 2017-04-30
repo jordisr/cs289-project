@@ -5,7 +5,7 @@ Kyte-Doolittle hydrophobicity scale
 from Bio.PDB import *
 import sys, re
 
-def feature(pdb_id, pdb_file):
+def feature(structure):
 
     # name of feature
     feature = 'hydrophobicity'
@@ -36,21 +36,14 @@ def feature(pdb_id, pdb_file):
         'Val':  4.200,
     }
 
-    # load Structure object from PDB file
-    parser = PDBParser()
-    structure = parser.get_structure(pdb_id,pdb_file)
-
-    # take first model and chain A (should be modified for generalizability)
-    model = structure[0]
-    chain = model['A']
-
-    for res in chain:
+    for res in structure:
         res_id = int(res.id[1])
         res_name = res.get_resname().title()
         output[res_id] = {feature: kyte_doolittle[res_name]}
 
     return output
 
+'''
 if __name__ == '__main__':
 
     pdb_file = sys.argv[1]
@@ -58,3 +51,4 @@ if __name__ == '__main__':
     pdb_id = path_re.group(2)
 
     print(feature(pdb_id, pdb_file))
+'''

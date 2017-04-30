@@ -9,7 +9,7 @@ import sys, re
 from Bio.PDB import *
 import numpy as np
 
-def get_neighbors(pdb_id, pdb_file):
+def get_neighbors(structure):
 
     # neighborhood metrics
     metrics = ['sequence10', 'within5', 'within10']
@@ -19,20 +19,12 @@ def get_neighbors(pdb_id, pdb_file):
     for metric in metrics:
         output[metric] = dict()
 
-    # load Structure object from PDB file
-    parser = PDBParser()
-    structure = parser.get_structure(pdb_id,pdb_file)
-
-    # take first model and chain A (should be modified for generalizability)
-    model = structure[0]
-    chain = model['A']
-
-    for res_i in chain:
+    for res_i in structure:
         res_i_id = int(res_i.id[1])
         for metric in metrics:
             # initialize empty list of neighbors
             output[metric][res_i_id] = []
-        for res_j in chain:
+        for res_j in structure:
             if res_i is not res_j:
                 res_j_id = int(res_j.id[1])
                 # sequence neighbors (take 20 and choose closest 10)
