@@ -9,6 +9,7 @@ python featurize.py [FILE]|[DIRECTORY]
 import sys, os, glob, re
 from Bio.PDB import *
 from multiprocessing import Pool
+import pandas as pd
 
 from neighbors import get_neighbors
 sys.path.append("./features")
@@ -23,58 +24,85 @@ class protein_features:
         self.feature_table = dict()
     def add(self, feature_output):
         # does not check for key overlap!
-        for key in feature_output:
-            if key in self.feature_table:
-                self.feature_table[key] = {**self.feature_table[key], **feature_output[key]}
+        for res in feature_output:
+            if res in self.feature_table:
+                self.feature_table[res] = {**self.feature_table[res], **feature_output[res]}
             else:
-                self.feature_table[key] = feature_output[key]
+                self.feature_table[res] = feature_output[res]
 
 def featurize(pdb_file):
 
     # extract pdb id from file name
     path_re = re.match(r'(.+/)?([0-9a-zA-Z]+)_?(\w+)?\.pdb',pdb_file)
     pdb_id = path_re.group(2)
+    chain_id = 'A'
 
-    # Could add code here to read PDB into Bio.PDB
+    # load Structure object from PDB file
+    parser = PDBParser()
+    pdb_object = parser.get_structure(pdb_id,pdb_file)
 
-    print("-- STAND BACK -- FEATURIZING, FOOL!")
+    # take first model and chain A (should be modified for generalizability)
+    chain = pdb_object[0][chain_id]
+
+    #print("-- STAND BACK -- FEATURIZING, FOOL!")
 
     # list of feature script names
     module_list = [centrality, hydrophobicity]
 
     # data structure to abstract details of feature scripts
     protein = protein_features()
-    print(protein.feature_table)
 
     # merge output onto larger data structure
     for module in module_list:
-        protein.add(module.feature(pdb_id, pdb_file))
+        protein.add(module.feature(chain))
 
     # get list of neighbors from neighbors.py
-    neighbors = get_neighbors(pdb_id,pdb_file)
-    #print(neighbors)
+    neighbors = get_neighbors(chain)
 
-    print(protein.feature_table) # DEBUG
+    # neighborize features here
+    neighborized = dict()
+    for residue in protein.feature_table:
+        neighbor_list = neighbors['within10'][residue]
 
-    # OUTLINE
-    # - Append/average features from neighbors to make large table
-    # - return data structure (pandas object?)
+        #### placeholder for fancier stuff
+        top_neighbor = neighbor_list[0]
 
-    return None
+        neighbor_features = protein.feature_table[top_neighbor]
+        for_res = dict()
+        for key,val in neighbor_features.items():
+            for_res['nn1_'+key] = val
+        neighborized[residue] = {**protein.feature_table[residue], **for_res}
+        #####
+
+    # add label information (not used in classification)
+    #for residue in protein.feature_table:
+    #    protein.feature_table[residue] = {'chain':chain_id, 'pdb':pdb_id, 'res_id':residue, **protein.feature_table[residue]}
+
+    # add label information (not used in classification)
+    for residue in neighborized:
+        neighborized[residue] = {'chain':chain_id, 'pdb':pdb_id, 'res_id':residue, **neighborized[residue]}
+
+    #print(protein.feature_table) # DEBUG
+    return neighborized
 
 if __name__ == '__main__':
 
     path = sys.argv[1]
     NUM_THREADS = 8
 
+    df = pd.DataFrame()
+
     if os.path.isdir(path):
         pdb_files = glob.glob(path+'/*.pdb')
         pool = Pool(processes=NUM_THREADS)
-        data_frame_list = pool.map(featurize, pdb_files)
-        # concatenate rows from each pdb into one large table
-        # data_frame = ...
+        for output in pool.map(featurize, pdb_files):
+            # concatenate rows from each pdb into one large table
+            df = df.append(list(output.values()),ignore_index=True)
+            print(df)
     else:
-        data_frame = featurize(path)
+        output = featurize(path)
+        df = df.append(list(output.values()),ignore_index=True)
+        print(df)
 
     # save data structure to pickle/compressed file
     # also save it as csv

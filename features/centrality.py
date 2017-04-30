@@ -7,7 +7,7 @@ distance between residue i and residue j.
 from Bio.PDB import *
 import sys, re
 
-def feature(pdb_id, pdb_file):
+def feature(structure):
 
     # name of feature
     feature = 'centrality'
@@ -15,21 +15,13 @@ def feature(pdb_id, pdb_file):
     # initialize dict of dicts
     output = dict()
 
-    # load Structure object from PDB file
-    parser = PDBParser()
-    structure = parser.get_structure(pdb_id,pdb_file)
-
-    # take first model and chain A (should be modified for generalizability)
-    model = structure[0]
-    chain = model['A']
-
     # total number of residues
-    num_residues = len(list(chain.get_residues()))
+    num_residues = len(list(structure.get_residues()))
 
-    for res_i in chain:
+    for res_i in structure:
         res_i_id = int(res_i.id[1])
         output[res_i_id] = {feature: 0}
-        for res_j in chain:
+        for res_j in structure:
             if res_i is not res_j:
                 ca_distance = res_i['CA']-res_j['CA']
                 output[res_i_id][feature] += ca_distance
