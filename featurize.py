@@ -19,9 +19,11 @@ import hydrophobicity
 ###### END OF FEATURE IMPORT
 
 # just a placeholder to get us started
-class protein_features:
-    def __init__(self):
-        self.feature_table = dict()
+class Protein:
+    def __init__(self, pdb_id):
+        self.residues = {}
+        self.id = pdb_id
+        self.residue_neighbors = {}
     def add(self, feature_output):
         # does not check for key overlap!
         for res in feature_output:
@@ -50,6 +52,7 @@ def featurize(pdb_file):
     module_list = [centrality, hydrophobicity]
 
     # data structure to abstract details of feature scripts
+
     protein = protein_features()
 
     # merge output onto larger data structure
@@ -74,6 +77,7 @@ def featurize(pdb_file):
         neighborized[residue] = {**protein.feature_table[residue], **for_res}
         #####
 
+
     # add label information (not used in classification)
     #for residue in protein.feature_table:
     #    protein.feature_table[residue] = {'chain':chain_id, 'pdb':pdb_id, 'res_id':residue, **protein.feature_table[residue]}
@@ -85,6 +89,18 @@ def featurize(pdb_file):
     #print(protein.feature_table) # DEBUG
     return neighborized
 
+'''
+def neighborize_features(protein, metric):
+
+    for res in protein.residues:
+        neighbors = protein.neighbors[metric][res]
+        for feature in res.get
+          
+
+    return
+'''
+
+
 if __name__ == '__main__':
 
     path = sys.argv[1]
@@ -95,6 +111,7 @@ if __name__ == '__main__':
     if os.path.isdir(path):
         pdb_files = glob.glob(path+'/*.pdb')
         pool = Pool(processes=NUM_THREADS)
+
         for output in pool.map(featurize, pdb_files):
             # concatenate rows from each pdb into one large table
             df = df.append(list(output.values()),ignore_index=True)
