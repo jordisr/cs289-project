@@ -1,0 +1,11 @@
+# ignore data and temporary files
+
+# data
+data/pdb
+data/fasta
+data/alignment
+
+# temporary files
+.DS_STORE
+*~
+__pycache__
