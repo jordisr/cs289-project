@@ -48,10 +48,14 @@ def feature(structure):
     # initialize dict of dicts
     output = dict()
 
+    # pull out PDB and chain ID from Bio.PDB object (uses first residue)
+    full_id  = next(structure.get_residues()).get_full_id()
+
     # calculate conservation from alignment
-    align_filename = 'alignment/12as_a.mafft'
+    align_filename = './data/alignment/'+full_id[0]+'_'+full_id[2]+'.alignment.fasta'
     conservation_list = conservation(align_filename)
 
+    # use residue numbering from structure
     for index,res in enumerate(structure):
         res_id = int(res.id[1])
         output[res_id] = {feature: conservation_list[index]}
