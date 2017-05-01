@@ -41,6 +41,9 @@ def feature(structure):
 
     return output
 
+def feature_names():
+    return ['centrality']
+
 if __name__ == '__main__':
 
     pdb_file = sys.argv[1]
