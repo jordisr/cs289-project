@@ -48,6 +48,9 @@ def feature(structure):
 
     return output
 
+def feature_names():
+    return ['hydrophobicity']
+
 '''
 if __name__ == '__main__':
 
