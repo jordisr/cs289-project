@@ -12,7 +12,8 @@ def feature(chain):
     polarity={"Ala":  8.1, "Arg": 10.5, "Asn": 11.0, "Asp": 13.0, "Cys":  5.5, 
               "Gln": 10.5, "Glu": 12.3, "Gly":  9.0, "His": 10.4, "Ile":  5.2,
               "Leu":  4.9, "Lys": 11.3, "Met":  5.7, "Phe":  5.2, "Pro":  8.0,
-              "Ser":  9.2, "Thr":  8.6, "Trp":  5.4, "Tyr":  6.2, "Val":  5.9  }    
+              "Ser":  9.2, "Thr":  8.6, "Trp":  5.4, "Tyr":  6.2, "Val":  5.9,
+              "Sec":  5.5, "Pyl": 11.3}    
     
     #initialize dict of dict
     samples=dict()
