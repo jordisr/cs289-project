@@ -26,7 +26,7 @@ def feature(chain):
         weight=molec_weight[name]
                 
         samples[res_index]={"molec_weight":weight}
-        print(samples)
+
     return samples
 
 def feature_names():
