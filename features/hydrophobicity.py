@@ -5,6 +5,9 @@ Kyte-Doolittle hydrophobicity scale
 from Bio.PDB import *
 import sys, re
 
+def feature_names():
+    return ['hydrophobicity']
+
 def feature(structure):
 
     # name of feature
@@ -34,6 +37,8 @@ def feature(structure):
         'Trp': -0.900,
         'Tyr': -1.300,
         'Val':  4.200,
+        'Sec':  2.500,# selenocysteine, non-standard
+        'Pyl': -3.900 # pyrrolysine, non-standard
     }
 
     for res in structure:

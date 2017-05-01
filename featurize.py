@@ -6,24 +6,29 @@ USAGE
 python featurize.py [FILE]|[DIRECTORY]
 '''
 
-import sys, os, glob, re
-from Bio.PDB import *
+import sys, os, glob, re, csv
 from multiprocessing import Pool
+from Bio.PDB import *
 import pandas as pd
 
-from neighbors import get_neighbors
-sys.path.append("./features")
-###### IMPORT FEATURES HERE
-import centrality
-import hydrophobicity
-###### END OF FEATURE IMPORT
+# get structural neighbors for each residue
+from nearest_neighbors import nearest_neighbors
 
-# just a placeholder to get us started
-class Protein:
-    def __init__(self, pdb_id):
-        self.residues = {}
-        self.id = pdb_id
+# path for custom features
+sys.path.append("./features")
+
+# features from protein structure
+import centrality, hydrophobicity, res_access
+# features just from the sequence
+import amino_acid_type, amino_acid_identity
+
+# data structure to store features associated with each residue in a protein
+class ProteinFeatures:
+    def __init__(self, pdb_id, chain_id):
+        self.feature_table = {}
         self.residue_neighbors = {}
+        self.id = pdb_id
+        self.chain = chain_id
     def add(self, feature_output):
         # does not check for key overlap!
         for res in feature_output:
@@ -31,80 +36,69 @@ class Protein:
                 self.feature_table[res] = {**self.feature_table[res], **feature_output[res]}
             else:
                 self.feature_table[res] = feature_output[res]
+    def neighborize_features(self, feature_list):
+        neighborized = {}
+        for res_i in self.feature_table:
+            for nn_id,res_j in enumerate(self.residue_neighbors[res_i]):
+                for feature in feature_list:
+                    self.feature_table[res_i]['nn'+str(nn_id+1)+'_'+feature] = self.feature_table[res_j][feature]
+        return True
 
 def featurize(pdb_file):
 
     # extract pdb id from file name
     path_re = re.match(r'(.+/)?([0-9a-zA-Z]+)_?(\w+)?\.pdb',pdb_file)
     pdb_id = path_re.group(2)
-    chain_id = 'A'
+    #chain_id = 'A'
+    chain_id = path_re.group(3).upper() # read chain from filename
 
     # load Structure object from PDB file
     parser = PDBParser()
     pdb_object = parser.get_structure(pdb_id,pdb_file)
 
-    # take first model and chain A (should be modified for generalizability)
+    print(pdb_file, flush=True) #OUTPUT FOR TRACKING PROGRESS
+
+    # take first model and specified chain
     chain = pdb_object[0][chain_id]
 
-    #print("-- STAND BACK -- FEATURIZING, FOOL!")
-
     # list of feature script names
-    module_list = [centrality, hydrophobicity]
+    module_list = [centrality, hydrophobicity, amino_acid_type, amino_acid_identity]
 
     # data structure to abstract details of feature scripts
+    protein = ProteinFeatures(pdb_id,chain_id)
 
-    protein = protein_features()
-
-    # merge output onto larger data structure
+    # iteratively add features to each residue in the protein
     for module in module_list:
         protein.add(module.feature(chain))
 
-    # get list of neighbors from neighbors.py
-    neighbors = get_neighbors(chain)
+    # list of all features used
+    all_features = []
+    for module in module_list:
+        all_features.extend(module.feature_names())
 
-    # neighborize features here
-    neighborized = dict()
+    # get list of structural neighbors from neighbors.py
+    protein.residue_neighbors = nearest_neighbors(chain)
+
+    # create new features from neighbors
+    protein.neighborize_features(all_features)
+
+    # add PDB/chain label information (not used for classification)
     for residue in protein.feature_table:
-        neighbor_list = neighbors['within10'][residue]
-
-        #### placeholder for fancier stuff
-        top_neighbor = neighbor_list[0]
-
-        neighbor_features = protein.feature_table[top_neighbor]
-        for_res = dict()
-        for key,val in neighbor_features.items():
-            for_res['nn1_'+key] = val
-        neighborized[residue] = {**protein.feature_table[residue], **for_res}
-        #####
-
-
-    # add label information (not used in classification)
-    #for residue in protein.feature_table:
-    #    protein.feature_table[residue] = {'chain':chain_id, 'pdb':pdb_id, 'res_id':residue, **protein.feature_table[residue]}
-
-    # add label information (not used in classification)
-    for residue in neighborized:
-        neighborized[residue] = {'chain':chain_id, 'pdb':pdb_id, 'res_id':residue, **neighborized[residue]}
-
-    #print(protein.feature_table) # DEBUG
-    return neighborized
-
-'''
-def neighborize_features(protein, metric):
-
-    for res in protein.residues:
-        neighbors = protein.neighbors[metric][res]
-        for feature in res.get
-          
-
-    return
-'''
-
+        y_label = int((pdb_id, chain_id, residue) in csa_labels)
+        protein.feature_table[residue] = {'y_label':y_label, 'chain':chain_id, 'pdb':pdb_id, 'res_id':residue, **protein.feature_table[residue]}
+    return protein.feature_table
 
 if __name__ == '__main__':
 
     path = sys.argv[1]
-    NUM_THREADS = 8
+    NUM_THREADS = 7
+
+    # read labels into dictionary for label lookup
+    csa_labels = dict()
+    with open('./data/csa/csa_from_lit.csv','r') as csvfile:
+        csvreader = csv.reader(csvfile, delimiter=',')
+        for row in csvreader:
+            csa_labels[(row[0],row[3], int(row[4]))] = 1
 
     df = pd.DataFrame()
 
@@ -115,12 +109,9 @@ if __name__ == '__main__':
         for output in pool.map(featurize, pdb_files):
             # concatenate rows from each pdb into one large table
             df = df.append(list(output.values()),ignore_index=True)
-            print(df)
     else:
         output = featurize(path)
         df = df.append(list(output.values()),ignore_index=True)
-        print(df)
 
-    # save data structure to pickle/compressed file
-    # also save it as csv
-    # feature subsets in this script or another?
+    # output table to csv for machine learning
+    df.to_csv('features.csv')
