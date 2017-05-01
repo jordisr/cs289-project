@@ -5,6 +5,10 @@ data/pdb
 data/fasta
 data/alignment
 
+# output
+*.csv
+*.gz
+
 # temporary files
 .DS_STORE
 *~
