@@ -1,6 +1,6 @@
 
 """
-
+Takes pre-processed DSSP dictionaries and translates them into residue features. 
 """
 
 import sys, re
@@ -9,7 +9,7 @@ import pickle
 
 def feature(chain):
     
-    # read data
+    # read in pre-processed DSSP data as nested dictionaries
     output = open("DSSP/dssp_output.txt", 'rb')
     sec_struct = pickle.load(output)  
     
