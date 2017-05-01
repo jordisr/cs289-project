@@ -24,7 +24,6 @@ def feature(chain):
         
         #calculate vector to first side chain carbon from central carbon
         vector_cb=hse._get_cb(residue, residue, residue)        
-        print(vector_cb)
         
         #extract vector directions
         vector_cb_x=vector_cb[0][0]
