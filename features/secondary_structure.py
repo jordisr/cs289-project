@@ -7,18 +7,19 @@ import sys, re
 import Bio.PDB
 import pickle
 
-  
 def feature(chain):
     
     # read data
-    data_path=sys.path.append("./DSSP/dssp_output.txt")
-    output = open(data_path, 'rb')
+    output = open("DSSP/dssp_output.txt", 'rb')
     sec_struct = pickle.load(output)  
     
+    #identify PDB_id
     full_id=next(chain.get_residues()).get_full_id()
     
+    #extract secondary structure from data file
     protein_SS=sec_struct[full_id[0]] 
     
+    #convert residue indexes to integers
     for key in protein_SS:
         key=int(key)
         
