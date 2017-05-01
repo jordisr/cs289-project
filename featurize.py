@@ -14,8 +14,20 @@ import pandas as pd
 from neighbors import get_neighbors
 sys.path.append("./features")
 ###### IMPORT FEATURES HERE
+import amino_acid_identity
+import amino_acid_type
+import avg_buried
+import b_factor
+import bulkiness
 import centrality
+import conservation
+import flexibility
 import hydrophobicity
+import polarity
+import refractivity
+import res_access
+import res_exposure
+import res_weight
 ###### END OF FEATURE IMPORT
 
 # just a placeholder to get us started
@@ -49,8 +61,10 @@ def featurize(pdb_file):
     #print("-- STAND BACK -- FEATURIZING, FOOL!")
 
     # list of feature script names
-    module_list = [centrality, hydrophobicity]
-
+    module_list = [amino_acid_identity, amino_acid_type, avg_buried, b_factor,
+                   bulkiness, centrality, conservation, flexibility, hydrophobicity,
+                   polarity, refractivity, res_access, res_exposure, res_weight]
+        
     # data structure to abstract details of feature scripts
 
     protein = protein_features()
