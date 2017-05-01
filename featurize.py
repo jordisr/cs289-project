@@ -16,11 +16,22 @@ from nearest_neighbors import nearest_neighbors
 
 # path for custom features
 sys.path.append("./features")
-
-# features from protein structure
-import centrality, hydrophobicity, res_access
-# features just from the sequence
-import amino_acid_type, amino_acid_identity
+###### IMPORT FEATURES HERE
+import amino_acid_identity
+import amino_acid_type
+import avg_buried
+import b_factor
+import bulkiness
+import centrality
+import conservation
+import flexibility
+import hydrophobicity
+import polarity
+import refractivity
+import res_access
+import res_exposure
+import res_weight
+###### END OF FEATURE IMPORT
 
 # data structure to store features associated with each residue in a protein
 class ProteinFeatures:
@@ -62,7 +73,9 @@ def featurize(pdb_file):
     chain = pdb_object[0][chain_id]
 
     # list of feature script names
-    module_list = [centrality, hydrophobicity, amino_acid_type, amino_acid_identity]
+    module_list = [amino_acid_identity, amino_acid_type, avg_buried, b_factor,
+                   bulkiness, centrality, conservation, flexibility, hydrophobicity,
+                   polarity, refractivity, res_access, res_exposure, res_weight]
 
     # data structure to abstract details of feature scripts
     protein = ProteinFeatures(pdb_id,chain_id)

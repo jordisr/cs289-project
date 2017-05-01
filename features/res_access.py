@@ -14,7 +14,7 @@ def feature(chain):
     samples=dict()
     
     #calculate exposure for entire chain
-    hse_cn=ExposureCN(model)
+    hse_cn=ExposureCN(chain)
 
     #assign exposure for each residue to dictionary
     for residue in hse_cn:
