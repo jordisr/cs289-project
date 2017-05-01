@@ -10,10 +10,10 @@ import Bio.PDB
 
 def feature(chain):
     
-    molec_weight={"ALA": 89, "ARG": 174, "ASN": 132, "ASP": 133, "CYS": 121,
-                  "GLN": 146, "GLU": 147, "GLY": 75, "HIS": 155, "ILE": 131, 
-                  "LEU": 131, "LYS": 146, "MET": 149, "PHE": 165, "PRO": 115, 
-                  "SER": 105, "THR": 119, "TRP": 204, "TYR": 181, "VAL": 117}    
+    molec_weight={"Ala": 89, "Arg": 174, "Asn": 132, "Asp": 133, "Cys": 121,
+                  "Gln": 146, "Glu": 147, "Gly": 75, "His": 155, "Ile": 131, 
+                  "Leu": 131, "Lys": 146, "Met": 149, "Phe": 165, "Pro": 115, 
+                  "Ser": 105, "Thr": 119, "Trp": 204, "Tyr": 181, "Val": 117}    
     
     #initialize dict of dict
     samples=dict()
@@ -21,7 +21,7 @@ def feature(chain):
     for residue in chain:
         
         res_index=residue.get_id()[1]
-        name=residue.get_resname()
+        name=residue.get_resname().title()
         
         weight=molec_weight[name]
                 
