@@ -1,6 +1,6 @@
 
 """
-Returns polarity value for each residue in protein.
+Returns polarity value for each residue in protein. Polarity values based on Grantham, Science 185:862-864(1974).
 
 """
 
