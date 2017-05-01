@@ -23,6 +23,6 @@ do
 	blastdbcmd -db $BLAST_DB -entry_batch $ALIGN_DIR$PDB_ID.homologs.txt >> $ALIGN_DIR$PDB_ID.homologs.fasta
 
 	# align sequences
-	mafft --quiet --thread $NUM_THREADS $ALIGN_DIR$PDB_ID.homologs.fasta > $ALIGN_DIR$PDB_ID.alignment.fasta
+	mafft --anysymbol --quiet --thread $NUM_THREADS $ALIGN_DIR$PDB_ID.homologs.fasta > $ALIGN_DIR$PDB_ID.alignment.fasta
 
 done
