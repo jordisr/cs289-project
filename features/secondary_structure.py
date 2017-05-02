@@ -48,7 +48,7 @@ def feature(chain):
         res_id=residue.get_id()[1]
 
         res_struct={"SS_alphahelix":0,"SS_betabridge":0, "SS_strand":0, "SS_3-10helix":0,
-                "SS_pihelix":0, "SS_turn":0,"SS_bend":0}
+                "SS_pihelix":0, "SS_turn":0,"SS_bend":0, "solvent_access":0}
         
         if res_id in dssp_dict:
     
