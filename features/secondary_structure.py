@@ -23,8 +23,7 @@ def parseDSSP(file):
       if( start ):
         
         res_SS.append(line[16:17])
-        x=line.split()
-        res_indexes.append(x[1])
+        res_indexes.append(line[6:10])
     
     return(res_SS, res_indexes)
 
