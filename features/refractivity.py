@@ -6,7 +6,6 @@ Returns value of refractive index of each residue.
 import sys, re
 import Bio.PDB
 
-
 def feature(chain):
     
     refractivity={"Ala":  4.340, "Arg": 26.660, "Asn": 13.280, "Asp": 12.000, "Cys": 35.770,
@@ -20,11 +19,12 @@ def feature(chain):
 
     for residue in chain:
         
+        #extract residue index and identity
         res_index=residue.get_id()[1]
         name=residue.get_resname().title()
         
+        #assign refractivity value to residue dictionary
         refrac_res=refractivity[name]
-                
         samples[res_index]={"refractivity":refrac_res}
         
     return samples
