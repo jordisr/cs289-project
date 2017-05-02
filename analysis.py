@@ -23,34 +23,37 @@ import os
 import csv
 import numpy as np
 import itertools
+import matplotlib.pyplot as plt
 
 from sklearn.model_selection import ShuffleSplit
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-import sklearn.metrics.precision_recall_curve as prc
+from sklearn.metrics import precision_recall_curve as prc
+from sklearn.metrics import average_precision_score as prc_score
+from sklearn.metrics import roc_curve as roc
+from sklearn.metrics import auc as roc_score
 
 
-def run():
-
-    cwd = os.getcwd()
-    datafile = cwd + '/../dataset.csv'
+def preprocess(datafile):
 
     # read in dataset
     with open(datafile, 'r') as f:
         reader = csv.reader(f, delimiter=",")
-        header = next(reader)
+        next(reader)
         dataset = list(reader)
 
     # convert dataset to numpy array. Note that this includes labels!!
+    # remove pdb id and name so they don't appear in the array
     n = len(dataset)
     d = len(dataset[0])
     X = np.array(dataset).reshape((n, d))
 
     # separate labels from sample points
     y = X[:, -1]
-    X = X[:, :-1]
-    d = d-1
+
+    # remove bookkeeping features (chain, pdb, res_id)
+    X = np.concatenate((X[:, 0], X[:, 2:-3]), axis=1)
 
     # center the data
     X = X - np.mean(X, axis=0)
@@ -68,82 +71,178 @@ def run():
     n_splits = 5
     test_size = 0.2
     seed = 42
-    rs = ShuffleSplit(n_splits=n_splits,
-                      test_size=test_size,
-                      random_state=seed)
+    splitter = ShuffleSplit(n_splits=n_splits,
+                            test_size=test_size,
+                            random_state=seed)
 
-    # ---Logistic Regression---
+    return X, y, splitter
 
-    # initialize parameter grid
+
+def logistic_regression(X, y, splitter):
+
+    model = 'logistic'
     penalty = ['l1', 'l2']
     C = [1.0, 0.1, 0.01]
-    grid = penalty, C
+    seed = 42
+    grid = model, penalty, C, seed
 
-    for parameters in itertools.product(grid):
-        p, c = parameters
-        clfr_log = LogisticRegression(penalty=p,
-                                      C=c,
-                                      random_state=seed)
+    params = {}
 
-        for train, test in rs.split(X):
-            X_trn = X[train]
-            y_trn = y[train]
-            X_val = X[test]
-            y_val = y[test]
+    for combination in itertools.product(grid):
+        params['model'] = combination[0]
+        params['penalty'] = combination[1]
+        params['C'] = combination[2]
+        params['seed'] = combination[3]
 
-            clfr_log.fit(X_trn, y_trn)
-            score = clfr_log.score(X_val, y_val)
-            z_val = clfr_log.predict(X_val)
-            precision, recall, thresholds = prc(y_val, z_val)
+        run_model(X, y, splitter, **params)
 
-    # ---Support Vector Machine---
 
-    # initialize parameter grid
+def svm(X, y, splitter):
+
+    model = 'svm'
     C = [1.0, 0.1, 0.01]
     kernel = ['linear', 'rbf']
     degree = [3, 4, 5]
-    grid = C, kernel, degree
+    seed = 42
+    grid = model, C, kernel, degree, seed
 
-    for parameters in itertools.product(grid):
-        c, k, d = parameters
-        clfr_svm = SVC(C=c,
-                       kernel=k,
-                       degree=d,
-                       random_state=seed)
+    params = {}
 
-        for train, test in rs.split(X):
-            X_trn = X[train]
-            y_trn = y[train]
-            X_val = X[test]
-            y_val = y[test]
+    for combination in itertools.product(grid):
+        params['model'] = combination[0]
+        params['C'] = combination[1]
+        params['kernel'] = combination[2]
+        params['degree'] = combination[3]
+        params['seed'] = combination[4]
 
-            clfr_svm.fit(X_trn, y_trn)
-            score = clfr_svm.score(X_val, y_val)
-            z_val = clfr_svm.predict(X_val)
-            precision, recall, thresholds = prc(y_val, z_val)
+        run_model(X, y, splitter, **params)
 
-    # ---Random Forest---
 
-    # initialize parameter grid
+def random_forest(X, y, splitter):
+
+    model = 'rf'
     n_estimators = [10, 20, 50]
     criterion = ['gini', 'entropy']
     max_depth = [None, 3, 5, 10]
-    min_impurity_split = [1e-5, 1e-6, 1e-7]
-    grid = n_estimators, criterion, max_depth, min_impurity_split
+    min_imp_split = [1e-5, 1e-6, 1e-7]
+    seed = 42
+    grid = model, n_estimators, criterion, max_depth, min_imp_split, seed
 
-    for parameters in itertools.product(grid):
-        ne, c, md, mis = parameters
-        clfr_rf = RandomForestClassifier(n_estimators=ne,
-                                         criterion=c,
-                                         max_depth=md,
-                                         min_impurity_split=mis,
-                                         random_state=seed)
-        clfr_rf.fit(X_trn, y_trn)
-        score = clfr_rf.score(X_val, y_val)
-        z_val = clfr_rf.predict(X_val)
-        precision, recall, thresholds = prc(y_val, z_val)
+    params = {}
+
+    for combination in itertools.product(grid):
+
+        params['model'] = combination[0]
+        params['n_estimators'] = combination[1]
+        params['criterion'] = combination[2]
+        params['max_depth'] = combination[3]
+        params['min_imp_split'] = combination[4]
+        params['seed'] = combination[5]
+
+        run_model(X, y, splitter, **params)
+
+
+def run_model(X, y, splitter, **params):
+
+    errors = []
+    auprcs = []
+    aurocs = []
+
+    for train, test in splitter.split(X):
+
+        X_trn = X[train]
+        y_trn = y[train]
+        X_val = X[test]
+        y_val = y[test]
+
+        classifier = build_classifier(**params)
+
+        classifier.fit(X_trn, y_trn)  # train
+
+        error, auprc, auroc = analyze(classifier, X_val, y_val, **params)
+        errors.append(error)
+        auprcs.append(auprc)
+        aurocs.append(auroc)
+
+    # fix: figure out how to report
+    avg_error = errors/len(errors)
+    avg_auprc = auprcs/len(auprcs)
+    avg_auroc = aurocs/len(aurocs)
+
+    return
+
+
+def build_classifier(**params):
+
+    if params['model'] == 'logistic':
+        return LogisticRegression(penalty=params['penalty'],
+                                  C=params['C'],
+                                  random_state=params['seed'])
+
+    if params['model'] == 'svm':
+        return SVC(C=params['C'],
+                   kernel=params['kernel'],
+                   degree=params['degree'],
+                   random_state=params['seed'])
+
+    if params['model'] == 'rf':
+        return RandomForestClassifier(n_estimators=params['n_estimators'],
+                                      criterion=params['criterion'],
+                                      max_depth=params['max_depth'],
+                                      min_imp_split=params['min_imp_split'],
+                                      random_state=params['seed'])
+
+    else:
+        print("no model specificed")  # fix: add actual error checking?
+        return
+
+
+# fix
+def analyze(clfr, model, X_val, y_val, **params):
+
+    y_predict = clfr.predict(X_val)
+
+    # precision-recall curve
+    precision, recall, thresholds = prc(y_val, y_predict)
+    plot_prc(precision, recall, thresholds, **params)  # FIX?
+
+    # ROC curve
+    fpr, tpr, thresholds = roc(y_val, y_predict)
+
+    # compute error, auprc, and auroc
+    error = clfr.score(X_val, y_val)
+    auprc = prc_score(y_val, predictions)
+    auroc = roc_score(fpr, tpr)
+    return
+
+
+# # fix
+# def plot_prc(precision, recall, thresholds, **params):
+
+#     # Plot Precision-Recall curve
+#     plt.clf()
+#     plt.plot(recall[0], precision[0], lw=lw, color='navy',
+#              label='Precision-Recall curve')
+#     plt.xlabel('Recall')
+#     plt.ylabel('Precision')
+#     plt.ylim([0.0, 1.05])
+#     plt.xlim([0.0, 1.0])
+#     plt.title('Precision-Recall example: AUC={0:0.2f}'.format(average_precision[0]))
+#     plt.legend(loc="lower left")
+#     plt.show()
+
+#     return
+
+
+# # fix
+# def plot_roc(tpr, fpr, thr, **params):
+
+    return
 
 
 if __name__ == '__main__':
-
-    run()
+    datafile = os.getcwd() + '/big.csv'
+    X, y, splitter = preprocess(datafile)
+    logistic_regression(X, y, splitter)
+    svm(X, y, splitter)
+    random_forest(X, y, splitter)
