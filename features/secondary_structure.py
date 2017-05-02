@@ -13,6 +13,7 @@ def parseDSSP(file):
     #res_SS=[]
     #res_indexes=[]
     res_dict={}
+    solvent_dict={}
 
     start=False
     for line in input_handle:
@@ -23,10 +24,11 @@ def parseDSSP(file):
 
       if( start ):
         
-        res_dict[line[6:10]]=line[16:17]
+        res_dict[int(line[6:10])]=line[16:17]
+        solvent_dict[int(line[6:10])]=float(line[35:38])
 
 
-    return(res_dict)
+    return(res_dict, solvent_dict)
 
 def feature(chain):
 
@@ -38,7 +40,7 @@ def feature(chain):
     dssp_path="data/dssp/"
     full_path=dssp_path+pdb_id+'_'+chain_id+".dssp"     
     
-    dssp_dict=parseDSSP(full_path)
+    dssp_dict, solvent_dict=parseDSSP(full_path)
     
     protein_struct={}    
     
@@ -64,6 +66,7 @@ def feature(chain):
                 res_struct["SS_turn"]=1
             elif dssp_dict[res_id]=="S":
                 res_struct["SS_bend"]=1
+            res_struct["solvent_access"]=solvent_dict[res_id]
         
         try:
             protein_struct[res_id]=res_struct
@@ -75,4 +78,4 @@ def feature(chain):
 
 def feature_names():
     return ["SS_alphahelix","SS_betabridge", "SS_strand", "SS_3-10helix",
-            "SS_pihelix", "SS_turn","SS_bend"]
+            "SS_pihelix", "SS_turn","SS_bend", "solvent_access"]
