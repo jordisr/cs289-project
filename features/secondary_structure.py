@@ -32,9 +32,10 @@ def feature(chain):
     full_id=next(chain.get_residues()).get_full_id()
     
     pdb_id=full_id[0]
+    chain_id=full_id[2]
 
     dssp_path="data/dssp/"
-    full_path=dssp_path+pdb_id+".dssp"    
+    full_path=dssp_path+pdb_id+'_'+chain_id+".dssp"    
     
     struc_codes, res_indexes=parseDSSP(full_path)
     
@@ -60,7 +61,7 @@ def feature(chain):
         try:
             protein_struct[int(res_indexes[i])]=res_struct
         except:
-            break
+            continue
          
     return protein_struct
     
