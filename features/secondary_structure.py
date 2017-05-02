@@ -39,9 +39,13 @@ def feature(chain):
     
     struc_codes, res_indexes=parseDSSP(full_path)
     
+    pdb_res_indexes=[]
+    for residue in chain:
+        pdb_res_indexes.append(residue.get_id()[1])
+    
     protein_struct={}
-
-    for i in range(len(res_indexes)):
+    
+    for i in range(len(pdb_res_indexes)):
         res_struct={"SS_alphahelix":0,"SS_betabridge":0, "SS_strand":0, "SS_3-10helix":0,
                 "SS_pihelix":0, "SS_turn":0,"SS_bend":0}
         if struc_codes[i]=="H":
@@ -59,7 +63,7 @@ def feature(chain):
         elif struc_codes[i]=="S":
             res_struct["SS_bend"]=1
         try:
-            protein_struct[int(res_indexes[i])]=res_struct
+            protein_struct[int(pdb_res_indexes[i])]=res_struct
         except:
             continue
          
