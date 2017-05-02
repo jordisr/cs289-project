@@ -12,7 +12,8 @@ def parseDSSP(file):
 
     res_SS=[]
     res_indexes=[]
-
+    
+    #iterate through PDB file 
     start=False
     for line in input_handle:
   
@@ -22,6 +23,7 @@ def parseDSSP(file):
 
       if( start ):
         
+        #append secondary structure and residue indices to list
         res_SS.append(line[16:17])
         res_indexes.append(line[6:10])
     
@@ -29,17 +31,19 @@ def parseDSSP(file):
 
 def feature(chain):
 
-    full_id=next(chain.get_residues()).get_full_id()
-    
+    #extract pdb_id from chain
+    full_id=next(chain.get_residues()).get_full_id()  
     pdb_id=full_id[0]
 
     dssp_path="data/dssp/"
     full_path=dssp_path+pdb_id+".dssp"    
     
+    #extract secondary structure from input chain
     struc_codes, res_indexes=parseDSSP(full_path)
     
     protein_struct={}
-
+    
+    #update residue feature dictionary 
     for i in range(len(res_indexes)):
         res_struct={"SS_alphahelix":0,"SS_betabridge":0, "SS_strand":0, "SS_3-10helix":0,
                 "SS_pihelix":0, "SS_turn":0,"SS_bend":0}
