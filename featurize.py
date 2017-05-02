@@ -29,7 +29,6 @@ import hydrophobicity
 import mutability
 import polarity
 import refractivity
-import res_access
 import res_weight
 import secondary_structure
 ###### END OF FEATURE IMPORT
@@ -76,8 +75,7 @@ def featurize(pdb_file):
     # list of feature script names
     module_list = [amino_acid_identity, amino_acid_type, avg_buried, b_factor,
                    bulkiness, centrality, conservation, flexibility, hydrophobicity,
-                   mutability, polarity, refractivity, res_access, secondary_structure, 
-                   res_weight]
+                   mutability, polarity, refractivity, secondary_structure,res_weight]
 
     # data structure to abstract details of feature scripts
     protein = ProteinFeatures(pdb_id,chain_id)

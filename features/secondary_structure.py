@@ -23,9 +23,11 @@ def parseDSSP(file):
         continue
 
       if( start ):
-        
-        res_dict[int(line[6:10])]=line[16:17]
-        solvent_dict[int(line[6:10])]=float(line[35:38])
+        try:
+            res_dict[int(line[6:10])]=line[16:17]
+            solvent_dict[int(line[6:10])]=float(line[35:38])
+        except:
+            continue
 
 
     return(res_dict, solvent_dict)
