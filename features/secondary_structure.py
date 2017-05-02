@@ -1,30 +1,72 @@
 
 """
-Takes pre-processed DSSP dictionaries and translates them into residue features. 
-"""
+Returns dict of dict of local secondary structure for each residue 
+in protein.
 
+"""
 import sys, re
 import Bio.PDB
-import pickle
+
+def parseDSSP(file):
+    input_handle = open(file, 'r')
+
+    res_SS=[]
+    res_indexes=[]
+
+    start=False
+    for line in input_handle:
+  
+      if( re.search('#', line) ):
+        start=True
+        continue
+
+      if( start ):
+        
+        res_SS.append(line[16:17])
+        x=line.split()
+        res_indexes.append(x[1])
+    
+    return(res_SS, res_indexes)
 
 def feature(chain):
-    
-    # read in pre-processed DSSP data as nested dictionaries
-    output = open("DSSP/dssp_output.txt", 'rb')
-    sec_struct = pickle.load(output)  
-    
-    #identify PDB_id
+
     full_id=next(chain.get_residues()).get_full_id()
     
-    #extract secondary structure from data file
-    protein_SS=sec_struct[full_id[0]] 
+    pdb_id=full_id[0]
+
+    dssp_path="data/dssp/"
+    full_path=dssp_path+pdb_id+".dssp"    
     
-    #convert residue indexes to integers
-    for key in protein_SS:
-        key=int(key)
-        
-    return protein_SS
+    struc_codes, res_indexes=parseDSSP(full_path)
+    
+    protein_struct={}
+
+    for i in range(len(res_indexes)):
+        res_struct={"SS_alphahelix":0,"SS_betabridge":0, "SS_strand":0, "SS_3-10helix":0,
+                "SS_pihelix":0, "SS_turn":0,"SS_bend":0}
+        if struc_codes[i]=="H":
+            res_struct["SS_alphahelix"]=1
+        elif struc_codes[i]=="B":
+            res_struct["SS_betabridge"]=1
+        elif struc_codes[i]=="E":
+            res_struct["SS_strand"]=1
+        elif struc_codes[i]=="G":
+            res_struct["SS_3-10helix"]=1
+        elif struc_codes[i]=="I":
+            res_struct["SS_pihelix"]=1
+        elif struc_codes[i]=="T":
+            res_struct["SS_turn"]=1
+        elif struc_codes[i]=="S":
+            res_struct["SS_bend"]=1
+        try:
+            protein_struct[int(res_indexes[i])]=res_struct
+        except:
+            break
+         
+    return protein_struct
+    
 
 def feature_names():
     return ["SS_alphahelix","SS_betabridge", "SS_strand", "SS_3-10helix",
             "SS_pihelix", "SS_turn","SS_bend"]
+
