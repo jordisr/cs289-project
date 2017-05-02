@@ -4,6 +4,7 @@
 data/pdb
 data/fasta
 data/alignment
+data/dssp
 
 # output
 *.csv
