@@ -3,24 +3,8 @@
 # (jordisr@berkeley.edu), and Emily Suter (emily.suter@berkeley.edu)
 # for CS298a, Spring 2017.
 
-
-# TO-DO: (27 Apr)
-# (1)
-# aggregate prc and score values for each split into avg across splits.
-# plot avg prc and table with avg score values for each hyperparameter
-# combo. do this for each of the three machine learning methods
-# (2)
-# make sure data import is correct once featurize.py output is finalized
-# (3)
-# finalize hyperparameter choices for each method
-# (4)
-# abstract code with a couple of functions: one for preprocessing, and one
-# for each ML method, most likely
-# (5)
-# Comment code
-
 import os
-import csv
+import pandas as pd
 import numpy as np
 import itertools
 import matplotlib.pyplot as plt
@@ -36,43 +20,134 @@ from sklearn.metrics import roc_curve as roc
 from sklearn.metrics import auc as roc_score
 
 
-def preprocess(datafile):
+def preprocess(datafile, load=False):
 
-    # read in dataset
-    with open(datafile, 'r') as f:
-        reader = csv.reader(f, delimiter=",")
-        next(reader)
-        dataset = list(reader)
+    if load:
+        X = np.load(os.getcwd() + '/X.npy')
+        y = np.load(os.getcwd() + '/y.npy')
 
-    # convert dataset to numpy array. Note that this includes labels!!
-    # remove pdb id and name so they don't appear in the array
-    n = len(dataset)
-    d = len(dataset[0])
-    X = np.array(dataset).reshape((n, d))
+    else:
+        # read the data in as a pandas df
+        df = pd.read_csv(datafile, header=0, index_col=0).dropna(axis=0)
 
-    # fix: these are kludges, try to figure out pandas
+        features = df.columns.tolist()
+        for col in ('res_id',
+                    'y_label',
+                    'pdb',
+                    'chain'):
+            features.remove(col)
+        X = df[features].values
+        y = df['y_label'].values
 
-    # separate labels and bookkeeping features
-    y = X[:, -1]
-    chain = X[:, 1]
-    pdb = X[:, -3]
-    res_id = X[:, -2]
+        # center and normalize the data
+        # if std = 0 for a feature, don't normalize (set std = 1)
+        X = X - np.mean(X, axis=0)
+        std = np.std(X, axis=0)
+        for i, sigma in enumerate(std):
+            if sigma == 0.0:
+                std[i] = 1.
+        X = np.divide(X, std)
 
-    # remove aforemention from X
-    X = np.concatenate((X[:, 0], X[:, 2:-3]), axis=1)
-    X.as_datatype(np.float32)  # fix
+        np.save(os.getcwd() + '/X.npy', X)
+        np.save(os.getcwd() + '/y.npy', y)
 
-    # center the data
-    X = X - np.mean(X, axis=0)
+    # pos_i = np.where(y)[0]
+    # neg_i = np.where(np.ones(y.shape) - y)[0]
 
-    # normalize the training and test data
-    # if std is 0 for a feature, set std = 1. We do this because this feature
-    # is the same for all training points, so we don't need to normalize it.
-    std = np.std(X, axis=0)
-    for i, sigma in enumerate(std):
-        if sigma == 0.0:
-            std[i] = 1.
-    X = np.divide(X, std)
+    # X_pos = X[pos_i]
+    # X_neg = X[neg_i]
+    # y_pos = y[pos_i]
+    # y_neg = y[neg_i]
+
+    return X, y
+
+
+def logistic_regression(X, y, outdir):
+
+    model = ['logistic']
+    penalty = ['l1', 'l2']
+    C = [1e0, 1e-1, 1e-2]
+    seed = [42]
+    grid = itertools.product(model,
+                             penalty,
+                             C,
+                             seed)
+
+    params = {}
+
+    for combination in grid:
+        params['model'] = combination[0]
+        params['penalty'] = combination[1]
+        params['C'] = combination[2]
+        params['seed'] = combination[3]
+
+        run_model(X, y, outdir, **params)
+
+
+def svm(X, y, outdir):
+
+    model = 'svm'
+    C = [1e0, 1e-1, 1e-2]
+    kernel = ['linear', 'rbf']
+    degree = [3, 4, 5]
+    seed = 42
+    grid = itertools.product(model,
+                             C,
+                             kernel,
+                             degree,
+                             seed)
+
+    params = {}
+
+    for combination in grid:
+        params['model'] = combination[0]
+        params['C'] = combination[1]
+        params['kernel'] = combination[2]
+        params['degree'] = combination[3]
+        params['seed'] = combination[4]
+
+        run_model(X, y, outdir, **params)
+
+
+def random_forest(X, y, outdir):
+
+    model = 'rf'
+    n_estimators = [10, 20, 50]
+    criterion = ['gini', 'entropy']
+    max_depth = [None, 3, 5, 10]
+    min_imp_split = [1e-5, 1e-6, 1e-7]
+    seed = 42
+    grid = itertools.product(model,
+                             n_estimators,
+                             criterion,
+                             max_depth,
+                             min_imp_split,
+                             seed)
+
+    params = {}
+
+    for combination in grid:
+        params['model'] = combination[0]
+        params['n_estimators'] = combination[1]
+        params['criterion'] = combination[2]
+        params['max_depth'] = combination[3]
+        params['min_imp_split'] = combination[4]
+        params['seed'] = combination[5]
+
+        run_model(X, y, outdir, **params)
+
+
+def run_model(X, y, outdir, **params):
+
+    import time
+
+    errors = []
+    auprcs = []
+    aurocs = []
+    prc_fig = plt.figure()
+    prc_ax = prc_fig.add_subplot(1, 1, 1)
+    roc_fig = plt.figure()
+    roc_ax = roc_fig.add_subplot(1, 1, 1)
 
     # prepare validation splits
     n_splits = 5
@@ -82,139 +157,82 @@ def preprocess(datafile):
                             test_size=test_size,
                             random_state=seed)
 
-    return X, y, splitter
-
-
-def logistic_regression(X, y, splitter, outdir):
-
-    model = 'logistic'
-    penalty = ['l1', 'l2']
-    C = [1.0, 0.1, 0.01]
-    seed = 42
-    grid = (model,
-            penalty,
-            C,
-            seed)
-
-    params = {}
-
-    for combination in itertools.product(grid):
-        params['model'] = combination[0]
-        params['penalty'] = combination[1]
-        params['C'] = combination[2]
-        params['seed'] = combination[3]
-
-        run_model(X, y, splitter, outdir, **params)
-
-
-def svm(X, y, splitter, outdir):
-
-    model = 'svm'
-    C = [1.0, 0.1, 0.01]
-    kernel = ['linear', 'rbf']
-    degree = [3, 4, 5]
-    seed = 42
-    grid = (model,
-            C,
-            kernel,
-            degree,
-            seed)
-
-    params = {}
-
-    for combination in itertools.product(grid):
-        params['model'] = combination[0]
-        params['C'] = combination[1]
-        params['kernel'] = combination[2]
-        params['degree'] = combination[3]
-        params['seed'] = combination[4]
-
-        run_model(X, y, splitter, outdir, **params)
-
-
-def random_forest(X, y, splitter, outdir):
-
-    model = 'rf'
-    n_estimators = [10, 20, 50]
-    criterion = ['gini', 'entropy']
-    max_depth = [None, 3, 5, 10]
-    min_imp_split = [1e-5, 1e-6, 1e-7]
-    seed = 42
-    grid = (model,
-            n_estimators,
-            criterion,
-            max_depth,
-            min_imp_split,
-            seed)
-
-    params = {}
-
-    for combination in itertools.product(grid):
-
-        params['model'] = combination[0]
-        params['n_estimators'] = combination[1]
-        params['criterion'] = combination[2]
-        params['max_depth'] = combination[3]
-        params['min_imp_split'] = combination[4]
-        params['seed'] = combination[5]
-
-        run_model(X, y, splitter, outdir, **params)
-
-
-def run_model(X, y, splitter, outdir, **params):
-
-    with open(outdir + 'output.txt', 'w') as f:
+    name = ''
+    for param in params:
+        if param is not 'seed':
+            if isinstance(params[param], float):
+                name = name + '_' + '{:.0g}'.format(params[param])
+            else:
+                name = name + '_' + str(params[param])
+    outfile = outdir + 'output' + name + '.txt'
+    with open(outfile, 'w+') as f:
+        f.write('---New Model---\n-Parameters\n')
         for param in params:
             f.write('{}: {}\n'.format(param, params[param]))
+        f.write('\n-5 Folds:\n'.format(n_splits))
 
-    errors = []
-    auprcs = []
-    aurocs = []
-    prc_fig = plt.figure()
-    roc_fig = plt.figure()
-
+    fold = 1
     for train, test in splitter.split(X):
-
         X_trn = X[train]
         y_trn = y[train]
         X_val = X[test]
         y_val = y[test]
 
         classifier = build_classifier(**params)
-
+        # classifier.fit(X_trn[0:2000,:], y_trn[0:2000])
         classifier.fit(X_trn, y_trn)
 
         error, auprc, auroc = analyze(classifier,
                                       X_val,
                                       y_val,
-                                      prc_fig,
-                                      roc_fig,
+                                      prc_ax,
+                                      roc_ax,
                                       **params)
         errors.append(error)
         auprcs.append(auprc)
         aurocs.append(auroc)
 
-    n_folds = len(errors)
+        with open(outfile, 'a') as f:
+            f.write('Fold {} Error: {}\n'.format(fold, error))
+            f.write('Fold {} AUPRC: {}\n'.format(fold, auprc))
+            f.write('Fold {} AUROC: {}\n'.format(fold, auroc))
 
+        fold += 1
+
+    n_folds = len(errors)
     avg_error = sum(errors)/n_folds
     avg_auprc = sum(auprcs)/n_folds
     avg_auroc = sum(aurocs)/n_folds
 
-    with open(outdir + 'output.txt', 'w') as f:
-        f.write("Average Error, {} folds: {}".format(n_folds, avg_error))
-        f.write("Average AUPRC, {} folds: {}".format(n_folds, avg_auprc))
-        f.write("Average AUROC, {} folds: {}".format(n_folds, avg_auroc))
+    # Write average values to output file
+    with open(outfile, 'a') as f:
+        f.write("Average Error, {} folds: {}\n".format(n_folds, avg_error))
+        f.write("Average AUPRC, {} folds: {}\n".format(n_folds, avg_auprc))
+        f.write("Average AUROC, {} folds: {}\n".format(n_folds, avg_auroc))
 
-    # fix: naming?
-    prc_fig.savefig(outdir + 'PRC_{}_{}'.format(params['model'], params))
-    roc_fig.savefig(outdir + 'ROC_{}_{}'.format(params['model'], params))
+    # PRC figure
+    prc_ax.set_xlabel('Recall')
+    prc_ax.set_ylabel('Precision')
+    prc_ax.set_xlim([0.0, 1.0])
+    prc_ax.set_ylim([0.0, 1.05])
+    prc_ax.set_title('PRC{}'.format(name))
+    prc_fig.savefig(outdir + 'PRC{}'.format(name))
 
-    return 
+    # ROC figure
+    roc_ax.set_xlabel('False Positive Rate')
+    roc_ax.set_ylabel('True Positive Rate')
+    roc_ax.set_xlim([0.0, 1.0])
+    roc_ax.set_ylim([0.0, 1.05])
+    roc_ax.set_title('ROC{}'.format(name))
+    roc_fig.savefig(outdir + 'ROC{}'.format(name))
+
+    return
 
 
 def build_classifier(**params):
 
     if params['model'] is'logistic':
+        print "logistic"
         return LogisticRegression(penalty=params['penalty'],
                                   C=params['C'],
                                   random_state=params['seed'])
@@ -237,72 +255,33 @@ def build_classifier(**params):
         return
 
 
-def analyze(classifier, X_val, y_val, **params):
+def analyze(classifier, X_val, y_val, prc_ax, roc_ax, **params):
 
     y_predict = classifier.predict(X_val)
 
+    # Error (1-Accuracy)
     error = classifier.score(X_val, y_val)
-    auprc = eval_prc(y_val, y_predict, **params)
-    auroc = eval_roc(y_val, y_predict, **params)
+
+    # Precision-Recall
+    auprc = prc_score(y_val, y_predict)
+    precision, recall, thresholds = prc(y_val, y_predict)
+    prc_ax.plot(recall, precision, label='AUC={}'.format(auprc))
+
+    # Receiver Operating Characteristics
+    fpr, tpr, thr = roc(y_val, y_predict)
+    auroc = roc_score(fpr, tpr)
+    roc_ax.plot(fpr, tpr, label='AUC={}'.format(auroc))
 
     return error, auprc, auroc
-
-
-# fix
-def eval_prc(y_val, y_predict, **params):  # handles prc scoring and plotting
-
-    auprc = prc_score(y_val, y_predict)
-
-    precision, recall, thresholds = prc(y_val, y_predict)
-
-    # Plot Precision-Recall curve
-    plt.clf()
-    plt.plot(recall[0],
-             precision[0],
-             lw=lw,
-             color='navy',
-             label='Precision-Recall curve')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0.0, 1.05])
-    plt.xlim([0.0, 1.0])
-    plt.title('Precision-Recall: AUC={0:0.2f}'.format())
-    plt.legend(loc="lower left")
-    plt.savefig('')
-
-    return auprc
-
-
-# fix
-def eval_roc(y_val, y_predict, **params):
-
-    fpr, tpr, thr = roc(y_val, y_predict)
-    auroc = roc_score(fpr, tpr)   
-
-
-    # ROC curve
-    
-    plt.clf()
-    plt.plot(recall[0],
-             precision[0],
-             lw=lw,
-             color='navy',
-             label='Precision-Recall curve')
-    plt.xlabel('Recall')
-    plt.ylabel('Precision')
-    plt.ylim([0.0, 1.05])
-    plt.xlim([0.0, 1.0])
-    plt.title('Precision-Recall: AUC={0:0.2f}'.format())
-    plt.legend(loc="lower left")
-    plt.savefig('')
-
-    return
 
 
 if __name__ == '__main__':
     datafile = os.getcwd() + '/features.csv'
     outdir = os.getcwd() + '/output/'
-    X, y, splitter = preprocess(datafile)
-    logistic_regression(X, y, splitter, outdir)
-    svm(X, y, splitter, outdir)
-    random_forest(X, y, splitter, outdir)
+    if not os.path.exists(outdir):
+        os.makedirs(outdir)
+    X, y = preprocess(datafile, load=True)
+    # X, y = preprocess(datafile, load=False)
+    logistic_regression(X, y, outdir)
+    svm(X, y, outdir)
+    random_forest(X, y, outdir)
