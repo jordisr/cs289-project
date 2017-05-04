@@ -1,3 +1,10 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed May  3 16:51:19 2017
+
+@author: emsuter
+"""
+
 # Script for building classifiers on Active Site dataset
 # Written by Chris Mathy (cjmathy@berkeley.edu), Jordi Silvestre-Ryan
 # (jordisr@berkeley.edu), and Emily Suter (emily.suter@berkeley.edu)
@@ -30,7 +37,8 @@ def preprocess(datafile, load=False):
         # read the data in as a pandas df
         df = pd.read_csv(datafile, header=0, index_col=0).dropna(axis=0)
 
-        features = df.columns.tolist()
+        features = df.columns.values.tolist()
+
         for col in ('res_id',
                     'y_label',
                     'pdb',
@@ -54,6 +62,8 @@ def preprocess(datafile, load=False):
     pos_i = np.where(y)[0]
     neg_i = np.where(np.ones(y.shape) - y)[0]
 
+    print(np.shape(pos_i), np.shape(neg_i))
+
     X_pos = X[pos_i]
     X_neg = X[neg_i]
     y_pos = y[pos_i]
@@ -70,6 +80,7 @@ def preprocess(datafile, load=False):
     X_sub=np.concatenate((X_pos,X_neg_subset), axis=0)
     y_sub=np.concatenate((y_pos,y_neg_subset), axis=0)       
 
+    print(np.shape(X_sub), np.shape(y_sub), num_pos)
     return X_sub, y_sub
 
 
@@ -97,7 +108,7 @@ def logistic_regression(X, y, outdir):
 
 def svm(X, y, outdir):
 
-    model = 'svm'
+    model = ['svm']
     C = [1e0, 1e-1, 1e-2]
     kernel = ['linear', 'rbf']
     degree = [3, 4, 5]
@@ -122,7 +133,7 @@ def svm(X, y, outdir):
 
 def random_forest(X, y, outdir):
 
-    model = 'rf'
+    model = ['rf']
     n_estimators = [10, 20, 50]
     criterion = ['gini', 'entropy']
     max_depth = [None, 3, 5, 10]
@@ -175,7 +186,7 @@ def run_model(X, y, outdir, **params):
                 name = name + '_' + '{:.0g}'.format(params[param])
             else:
                 name = name + '_' + str(params[param])
-    outfile = outdir + 'output' + name + '.txt'
+    outfile = outdir + 'output.txt'
     with open(outfile, 'w+') as f:
         f.write('---New Model---\n-Parameters\n')
         for param in params:
@@ -227,7 +238,7 @@ def run_model(X, y, outdir, **params):
     prc_ax.set_xlim([0.0, 1.0])
     prc_ax.set_ylim([0.0, 1.05])
     prc_ax.set_title('PRC{}'.format(name))
-    prc_fig.savefig(outdir + 'PRC{}'.format(name)+'.png')
+    prc_fig.savefig(outdir + 'PRC{}'.format(name)+".png")
 
     # ROC figure
     roc_ax.set_xlabel('False Positive Rate')
@@ -235,7 +246,7 @@ def run_model(X, y, outdir, **params):
     roc_ax.set_xlim([0.0, 1.0])
     roc_ax.set_ylim([0.0, 1.05])
     roc_ax.set_title('ROC{}'.format(name))
-    roc_fig.savefig(outdir + 'ROC{}'.format(name)+'.png')
+    roc_fig.savefig(outdir + 'ROC{}'.format(name)+".png")
 
     return
 
@@ -243,7 +254,7 @@ def run_model(X, y, outdir, **params):
 def build_classifier(**params):
 
     if params['model'] is'logistic':
-        print "logistic"
+        print ("logistic")
         return LogisticRegression(penalty=params['penalty'],
                                   C=params['C'],
                                   random_state=params['seed'])
@@ -279,7 +290,7 @@ def analyze(classifier, X_val, y_val, prc_ax, roc_ax, **params):
     prc_ax.plot(recall, precision, label='AUC={}'.format(auprc))
 
     # Receiver Operating Characteristics
-    fpr, tpr, thr = roc(y_val, y_predict)
+    fpr, tpr, thr = roc(y_val, y_predict, pos_label=1)
     auroc = roc_score(fpr, tpr)
     roc_ax.plot(fpr, tpr, label='AUC={}'.format(auroc))
 
