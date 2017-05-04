@@ -66,20 +66,18 @@ def preprocess(datafile, load=False):
     X_neg = X[neg_i]
     y_pos = y[pos_i]
     y_neg = y[neg_i]
-    
-    np.random.shuffle(X_neg)
-    np.random.shuffle(y_neg)    
-    
-    num_pos=len(X_pos)
-    
-    X_neg_subset=X_neg[:5*num_pos]
-    y_neg_subset=y_neg[:5*num_pos]
-    
-    X_sub=np.concatenate((X_pos,X_neg_subset), axis=0)
-    y_sub=np.concatenate((y_pos,y_neg_subset), axis=0)       
 
-    print(np.shape(X_sub), np.shape(y_sub), num_pos)
-    return X_sub, y_sub
+    num_pos = X_pos.shape[0]
+    
+    neg_multiplier = 5
+    np.random.shuffle(X_neg)
+    X_neg_subset = X_neg[:neg_multiplier*num_pos]
+    y_neg_subset = y_neg[:neg_multiplier*num_pos]
+    
+    X = np.concatenate((X_pos,X_neg_subset), axis=0)
+    y = np.concatenate((y_pos,y_neg_subset), axis=0)       
+
+    return X, y
 
 
 def logistic_regression(X, y, outdir):
@@ -92,16 +90,15 @@ def logistic_regression(X, y, outdir):
                              penalty,
                              C,
                              seed)
-
+    params_list = ['model',
+                   'penalty',
+                   'C',
+                   'seed']
     params = {}
-
     for combination in grid:
-        params['model'] = combination[0]
-        params['penalty'] = combination[1]
-        params['C'] = combination[2]
-        params['seed'] = combination[3]
-
-        run_model(X, y, outdir, **params)
+        for i, param in enumerate(params_list):
+            params[param] = combination[i]
+        run_model(X, y, outdir, outfile, **params)
 
 
 def svm(X, y, outdir):
@@ -117,16 +114,16 @@ def svm(X, y, outdir):
                              degree,
                              seed)
 
+    params_list = ['model',
+                   'C',
+                   'kernel',
+                   'degree',
+                   'seed']
     params = {}
-
     for combination in grid:
-        params['model'] = combination[0]
-        params['C'] = combination[1]
-        params['kernel'] = combination[2]
-        params['degree'] = combination[3]
-        params['seed'] = combination[4]
-        print(combination)
-        run_model(X, y, outdir, **params)
+        for i, param in enumerate(params_list):
+            params[param] = combination[i]
+        run_model(X, y, outdir, outfile, **params)
 
 
 def random_forest(X, y, outdir):
@@ -143,23 +140,27 @@ def random_forest(X, y, outdir):
                              max_depth,
                              min_imp_split,
                              seed)
-
+    params_list = ['model',
+                   'n_estimators',
+                   'criterion',
+                   'max_depth',
+                   'min_imp_split',
+                   'seed']
     params = {}
-
     for combination in grid:
-        params['model'] = combination[0]
-        params['n_estimators'] = combination[1]
-        params['criterion'] = combination[2]
-        params['max_depth'] = combination[3]
-        params['min_imp_split'] = combination[4]
-        params['seed'] = combination[5]
-
+        for i, param in enumerate(params_list):
+            params[param] = combination[i]
         run_model(X, y, outdir, **params)
 
 
 def run_model(X, y, outdir, **params):
-
-    import time
+    
+    outfile = outdir + 'output_{}.txt'.format(params['model'])
+    if not os.path.isfile(outfile):
+        with open(outfile, 'w') as f:
+            for param in params:
+                f.write('{},'.format(param))
+            f.write('Error,AUPRC,AUROC,Fold\n')            
 
     errors = []
     auprcs = []
@@ -184,12 +185,6 @@ def run_model(X, y, outdir, **params):
                 name = name + '_' + '{:.0g}'.format(params[param])
             else:
                 name = name + '_' + str(params[param])
-    outfile = outdir + 'output.txt'
-    with open(outfile, 'w+') as f:
-        f.write('---New Model---\n-Parameters\n')
-        for param in params:
-            f.write('{}: {}\n'.format(param, params[param]))
-        f.write('\n-5 Folds:\n'.format(n_splits))
 
     fold = 1
     for train, test in splitter.split(X):
@@ -199,7 +194,6 @@ def run_model(X, y, outdir, **params):
         y_val = y[test]
 
         classifier = build_classifier(**params)
-        # classifier.fit(X_trn[0:2000,:], y_trn[0:2000])
         classifier.fit(X_trn, y_trn)
 
         error, auprc, auroc = analyze(classifier,
@@ -213,9 +207,12 @@ def run_model(X, y, outdir, **params):
         aurocs.append(auroc)
 
         with open(outfile, 'a') as f:
-            f.write('Fold {} Error: {}\n'.format(fold, error))
-            f.write('Fold {} AUPRC: {}\n'.format(fold, auprc))
-            f.write('Fold {} AUROC: {}\n'.format(fold, auroc))
+            for param in params:
+                f.write('{},'.format(params[param]))
+            f.write('{},{},{},{}\n'.format(error,
+                                           auprc,
+                                           auroc,
+                                           fold))
 
         fold += 1
 
@@ -226,9 +223,11 @@ def run_model(X, y, outdir, **params):
 
     # Write average values to output file
     with open(outfile, 'a') as f:
-        f.write("Average Error, {} folds: {}\n".format(n_folds, avg_error))
-        f.write("Average AUPRC, {} folds: {}\n".format(n_folds, avg_auprc))
-        f.write("Average AUROC, {} folds: {}\n".format(n_folds, avg_auroc))
+        for param in params:
+            f.write('{},'.format(params[param]))
+        f.write('{},{},{},AVG\n'.format(avg_error,
+                                        avg_auprc,
+                                        avg_auroc,))
 
     # PRC figure
     prc_ax.set_xlabel('Recall')
@@ -257,14 +256,16 @@ def build_classifier(**params):
         print ('logistic')
         return LogisticRegression(penalty=params['penalty'],
                                   C=params['C'],
-                                  random_state=params['seed'])
+                                  random_state=params['seed']
+                                  class_weight='balanced')
 
     if params['model'] is 'svm':
         print ('svm')
         return SVC(C=params['C'],
                    kernel=params['kernel'],
                    degree=params['degree'],
-                   random_state=params['seed'])
+                   random_state=params['seed']
+                   class_weight='balanced')
 
     if params['model'] is 'rf':
         print ('rf')
@@ -272,7 +273,8 @@ def build_classifier(**params):
                                       criterion=params['criterion'],
                                       max_depth=params['max_depth'],
                                       min_impurity_split=params['min_imp_split'],
-                                      random_state=params['seed'])
+                                      random_state=params['seed']
+                                      class_weight='balanced')
 
     else:
         print("no model specified")
