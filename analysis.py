@@ -101,7 +101,7 @@ def svm(X, y, outdir):
     C = [1e0, 1e-1, 1e-2]
     kernel = ['linear', 'rbf']
     degree = [3, 4, 5]
-    seed = 42
+    seed = [42]
     grid = itertools.product(model,
                              C,
                              kernel,
@@ -127,7 +127,7 @@ def random_forest(X, y, outdir):
     criterion = ['gini', 'entropy']
     max_depth = [None, 3, 5, 10]
     min_imp_split = [1e-5, 1e-6, 1e-7]
-    seed = 42
+    seed = [42]
     grid = itertools.product(model,
                              n_estimators,
                              criterion,
@@ -227,7 +227,7 @@ def run_model(X, y, outdir, **params):
     prc_ax.set_xlim([0.0, 1.0])
     prc_ax.set_ylim([0.0, 1.05])
     prc_ax.set_title('PRC{}'.format(name))
-    prc_fig.savefig(outdir + 'PRC{}'.format(name))
+    prc_fig.savefig(outdir + 'PRC{}'.format(name)+'.png')
 
     # ROC figure
     roc_ax.set_xlabel('False Positive Rate')
@@ -235,7 +235,7 @@ def run_model(X, y, outdir, **params):
     roc_ax.set_xlim([0.0, 1.0])
     roc_ax.set_ylim([0.0, 1.05])
     roc_ax.set_title('ROC{}'.format(name))
-    roc_fig.savefig(outdir + 'ROC{}'.format(name))
+    roc_fig.savefig(outdir + 'ROC{}'.format(name)+'.png')
 
     return
 
