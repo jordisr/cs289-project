@@ -62,8 +62,6 @@ def preprocess(datafile, load=False):
     pos_i = np.where(y)[0]
     neg_i = np.where(np.ones(y.shape) - y)[0]
 
-    print(np.shape(pos_i), np.shape(neg_i))
-
     X_pos = X[pos_i]
     X_neg = X[neg_i]
     y_pos = y[pos_i]
@@ -74,9 +72,9 @@ def preprocess(datafile, load=False):
     
     num_pos=len(X_pos)
     
-    X_neg_subset=X_neg[:num_pos]
-    y_neg_subset=y_neg[:num_pos]
-
+    X_neg_subset=X_neg[:5*num_pos]
+    y_neg_subset=y_neg[:5*num_pos]
+    
     X_sub=np.concatenate((X_pos,X_neg_subset), axis=0)
     y_sub=np.concatenate((y_pos,y_neg_subset), axis=0)       
 
@@ -88,7 +86,7 @@ def logistic_regression(X, y, outdir):
 
     model = ['logistic']
     penalty = ['l1', 'l2']
-    C = [1e0, 1e-1, 1e-2]
+    C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
     seed = [42]
     grid = itertools.product(model,
                              penalty,
@@ -109,7 +107,7 @@ def logistic_regression(X, y, outdir):
 def svm(X, y, outdir):
 
     model = ['svm']
-    C = [1e0, 1e-1, 1e-2]
+    C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
     kernel = ['linear', 'rbf']
     degree = [3, 4, 5]
     seed = [42]
@@ -127,7 +125,7 @@ def svm(X, y, outdir):
         params['kernel'] = combination[2]
         params['degree'] = combination[3]
         params['seed'] = combination[4]
-
+        print(combination)
         run_model(X, y, outdir, **params)
 
 
@@ -135,9 +133,9 @@ def random_forest(X, y, outdir):
 
     model = ['rf']
     n_estimators = [10, 20, 50]
-    criterion = ['gini', 'entropy']
-    max_depth = [None, 3, 5, 10]
-    min_imp_split = [1e-5, 1e-6, 1e-7]
+    criterion = ['gini']
+    max_depth = [None, 5, 10, 20]
+    min_imp_split = [1e-5, 1e-7, 1e-9]
     seed = [42]
     grid = itertools.product(model,
                              n_estimators,
@@ -239,6 +237,7 @@ def run_model(X, y, outdir, **params):
     prc_ax.set_ylim([0.0, 1.05])
     prc_ax.set_title('PRC{}'.format(name))
     prc_fig.savefig(outdir + 'PRC{}'.format(name)+".png")
+    plt.close(prc_fig)
 
     # ROC figure
     roc_ax.set_xlabel('False Positive Rate')
@@ -247,6 +246,7 @@ def run_model(X, y, outdir, **params):
     roc_ax.set_ylim([0.0, 1.05])
     roc_ax.set_title('ROC{}'.format(name))
     roc_fig.savefig(outdir + 'ROC{}'.format(name)+".png")
+    plt.close(roc_fig)
 
     return
 
@@ -254,22 +254,24 @@ def run_model(X, y, outdir, **params):
 def build_classifier(**params):
 
     if params['model'] is'logistic':
-        print ("logistic")
+        print ('logistic')
         return LogisticRegression(penalty=params['penalty'],
                                   C=params['C'],
                                   random_state=params['seed'])
 
     if params['model'] is 'svm':
+        print ('svm')
         return SVC(C=params['C'],
                    kernel=params['kernel'],
                    degree=params['degree'],
                    random_state=params['seed'])
 
     if params['model'] is 'rf':
+        print ('rf')
         return RandomForestClassifier(n_estimators=params['n_estimators'],
                                       criterion=params['criterion'],
                                       max_depth=params['max_depth'],
-                                      min_imp_split=params['min_imp_split'],
+                                      min_impurity_split=params['min_imp_split'],
                                       random_state=params['seed'])
 
     else:
@@ -279,7 +281,13 @@ def build_classifier(**params):
 
 def analyze(classifier, X_val, y_val, prc_ax, roc_ax, **params):
 
-    y_predict = classifier.predict(X_val)
+
+    #y_predict = classifier.predict(X_val)
+    if params['model'] is 'svm' or params['model'] is 'logistic':
+        y_predict = classifier.decision_function(X_val)
+    else:
+        y_predict = classifier.predict_proba(X_val)[:,1]
+        print(np.shape(y_predict))
 
     # Error (1-Accuracy)
     error = classifier.score(X_val, y_val)
@@ -302,8 +310,8 @@ if __name__ == '__main__':
     outdir = os.getcwd() + '/output/'
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-    X, y = preprocess(datafile, load=True)
-    # X, y = preprocess(datafile, load=False)
+    #X, y = preprocess(datafile, load=True)
+    X, y = preprocess(datafile, load=False)
     logistic_regression(X, y, outdir)
     svm(X, y, outdir)
     random_forest(X, y, outdir)
