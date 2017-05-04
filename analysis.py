@@ -51,15 +51,26 @@ def preprocess(datafile, load=False):
         np.save(os.getcwd() + '/X.npy', X)
         np.save(os.getcwd() + '/y.npy', y)
 
-    # pos_i = np.where(y)[0]
-    # neg_i = np.where(np.ones(y.shape) - y)[0]
+    pos_i = np.where(y)[0]
+    neg_i = np.where(np.ones(y.shape) - y)[0]
 
-    # X_pos = X[pos_i]
-    # X_neg = X[neg_i]
-    # y_pos = y[pos_i]
-    # y_neg = y[neg_i]
+    X_pos = X[pos_i]
+    X_neg = X[neg_i]
+    y_pos = y[pos_i]
+    y_neg = y[neg_i]
+    
+    np.random.shuffle(X_neg)
+    np.random.shuffle(y_neg)    
+    
+    num_pos=len(X_pos)
+    
+    X_neg_subset=X_neg[:num_pos]
+    y_neg_subset=y_neg[:num_pos]
 
-    return X, y
+    X_sub=np.concatenate((X_pos,X_neg_subset), axis=0)
+    y_sub=np.concatenate((y_pos,y_neg_subset), axis=0)       
+
+    return X_sub, y_sub
 
 
 def logistic_regression(X, y, outdir):
