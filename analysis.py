@@ -26,6 +26,8 @@ from sklearn.metrics import average_precision_score as prc_score
 from sklearn.metrics import roc_curve as roc
 from sklearn.metrics import auc as roc_score
 
+global seed
+seed = 42
 
 def preprocess(datafile, load=False):
 
@@ -70,12 +72,13 @@ def preprocess(datafile, load=False):
     num_pos = X_pos.shape[0]
     
     neg_multiplier = 5
+    np.random.seed(seed)
     np.random.shuffle(X_neg)
     X_neg_subset = X_neg[:neg_multiplier*num_pos]
     y_neg_subset = y_neg[:neg_multiplier*num_pos]
-    
-    X = np.concatenate((X_pos,X_neg_subset), axis=0)
-    y = np.concatenate((y_pos,y_neg_subset), axis=0)       
+
+    X = np.concatenate((X_pos, X_neg_subset), axis=0)
+    y = np.concatenate((y_pos, y_neg_subset), axis=0)       
 
     return X, y
 
@@ -84,46 +87,37 @@ def logistic_regression(X, y, outdir):
 
     model = ['logistic']
     penalty = ['l1', 'l2']
-    C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
-    seed = [42]
+    C = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6]
     grid = itertools.product(model,
                              penalty,
-                             C,
-                             seed)
+                             C)
     params_list = ['model',
                    'penalty',
-                   'C',
-                   'seed']
+                   'C']
     params = {}
     for combination in grid:
         for i, param in enumerate(params_list):
             params[param] = combination[i]
-        run_model(X, y, outdir, outfile, **params)
+        run_model(X, y, outdir, **params)
 
 
 def svm(X, y, outdir):
 
     model = ['svm']
-    C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6]
+    C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
     kernel = ['linear', 'rbf']
-    degree = [3, 4, 5]
-    seed = [42]
     grid = itertools.product(model,
                              C,
-                             kernel,
-                             degree,
-                             seed)
+                             kernel)
 
     params_list = ['model',
                    'C',
-                   'kernel',
-                   'degree',
-                   'seed']
+                   'kernel']
     params = {}
     for combination in grid:
         for i, param in enumerate(params_list):
             params[param] = combination[i]
-        run_model(X, y, outdir, outfile, **params)
+        run_model(X, y, outdir, **params)
 
 
 def random_forest(X, y, outdir):
@@ -133,19 +127,16 @@ def random_forest(X, y, outdir):
     criterion = ['gini']
     max_depth = [None, 5, 10, 20]
     min_imp_split = [1e-5, 1e-7, 1e-9]
-    seed = [42]
     grid = itertools.product(model,
                              n_estimators,
                              criterion,
                              max_depth,
-                             min_imp_split,
-                             seed)
+                             min_imp_split)
     params_list = ['model',
                    'n_estimators',
                    'criterion',
                    'max_depth',
-                   'min_imp_split',
-                   'seed']
+                   'min_imp_split']
     params = {}
     for combination in grid:
         for i, param in enumerate(params_list):
@@ -154,8 +145,8 @@ def random_forest(X, y, outdir):
 
 
 def run_model(X, y, outdir, **params):
-    
-    outfile = outdir + 'output_{}.txt'.format(params['model'])
+
+    outfile = outdir + 'output_{}.csv'.format(params['model'])
     if not os.path.isfile(outfile):
         with open(outfile, 'w') as f:
             for param in params:
@@ -173,18 +164,9 @@ def run_model(X, y, outdir, **params):
     # prepare validation splits
     n_splits = 5
     test_size = 0.2
-    seed = 42
     splitter = ShuffleSplit(n_splits=n_splits,
                             test_size=test_size,
                             random_state=seed)
-
-    name = ''
-    for param in params:
-        if param is not 'seed':
-            if isinstance(params[param], float):
-                name = name + '_' + '{:.0g}'.format(params[param])
-            else:
-                name = name + '_' + str(params[param])
 
     fold = 1
     for train, test in splitter.split(X):
@@ -229,6 +211,13 @@ def run_model(X, y, outdir, **params):
                                         avg_auprc,
                                         avg_auroc,))
 
+    name = ''
+    for param in params:
+        if isinstance(params[param], float):
+            name = name + '_' + '{:.0g}'.format(params[param])
+        else:
+            name = name + '_' + str(params[param])
+
     # PRC figure
     prc_ax.set_xlabel('Recall')
     prc_ax.set_ylabel('Precision')
@@ -256,15 +245,14 @@ def build_classifier(**params):
         print ('logistic')
         return LogisticRegression(penalty=params['penalty'],
                                   C=params['C'],
-                                  random_state=params['seed']
+                                  random_state=seed,
                                   class_weight='balanced')
 
     if params['model'] is 'svm':
         print ('svm')
         return SVC(C=params['C'],
                    kernel=params['kernel'],
-                   degree=params['degree'],
-                   random_state=params['seed']
+                   random_state=seed,
                    class_weight='balanced')
 
     if params['model'] is 'rf':
@@ -273,7 +261,7 @@ def build_classifier(**params):
                                       criterion=params['criterion'],
                                       max_depth=params['max_depth'],
                                       min_impurity_split=params['min_imp_split'],
-                                      random_state=params['seed']
+                                      random_state=seed,
                                       class_weight='balanced')
 
     else:
@@ -312,8 +300,8 @@ if __name__ == '__main__':
     outdir = os.getcwd() + '/output/'
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-    #X, y = preprocess(datafile, load=True)
-    X, y = preprocess(datafile, load=False)
+    X, y = preprocess(datafile, load=True)
+    # X, y = preprocess(datafile, load=False)
     logistic_regression(X, y, outdir)
-    svm(X, y, outdir)
+    # svm(X, y, outdir)
     random_forest(X, y, outdir)
