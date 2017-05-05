@@ -29,6 +29,7 @@ from sklearn.metrics import auc as roc_score
 global seed
 seed = 42
 
+
 def preprocess(datafile, load=False):
 
     if load:
@@ -40,7 +41,9 @@ def preprocess(datafile, load=False):
         df = pd.read_csv(datafile, header=0, index_col=0).dropna(axis=0)
 
         features = df.columns.values.tolist()
-
+        for f in features:
+            print f
+        assert False
         for col in ('res_id',
                     'y_label',
                     'pdb',
@@ -70,7 +73,7 @@ def preprocess(datafile, load=False):
     y_neg = y[neg_i]
 
     num_pos = X_pos.shape[0]
-    
+
     neg_multiplier = 5
     np.random.seed(seed)
     np.random.shuffle(X_neg)
@@ -78,16 +81,21 @@ def preprocess(datafile, load=False):
     y_neg_subset = y_neg[:neg_multiplier*num_pos]
 
     X = np.concatenate((X_pos, X_neg_subset), axis=0)
-    y = np.concatenate((y_pos, y_neg_subset), axis=0)       
+    y = np.concatenate((y_pos, y_neg_subset), axis=0)
 
     return X, y
 
 
 def logistic_regression(X, y, outdir):
 
+    # model = ['logistic']
+    # penalty = ['l1', 'l2']
+    # C = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6]
+
     model = ['logistic']
-    penalty = ['l1', 'l2']
-    C = [1e-2, 1e-1, 1e0, 1e1, 1e2, 1e3, 1e4, 1e5, 1e6]
+    penalty = ['l1']
+    C = [1e-1]
+
     grid = itertools.product(model,
                              penalty,
                              C)
@@ -98,14 +106,20 @@ def logistic_regression(X, y, outdir):
     for combination in grid:
         for i, param in enumerate(params_list):
             params[param] = combination[i]
-        run_model(X, y, outdir, **params)
+        classifier = run_model(X, y, outdir, **params)
+
+    return classifier
 
 
 def svm(X, y, outdir):
 
+    # model = ['svm']
+    # C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
+    # kernel = ['linear', 'rbf']
+
     model = ['svm']
-    C = [1e0, 1e-1, 1e-2, 1e-3, 1e-4, 1e-5, 1e-6, 1e-7]
-    kernel = ['linear', 'rbf']
+    C = [1]
+    kernel = ['linear']
     grid = itertools.product(model,
                              C,
                              kernel)
@@ -117,16 +131,25 @@ def svm(X, y, outdir):
     for combination in grid:
         for i, param in enumerate(params_list):
             params[param] = combination[i]
-        run_model(X, y, outdir, **params)
+        classifier = run_model(X, y, outdir, **params)
+
+    return classifier
 
 
 def random_forest(X, y, outdir):
 
+    # model = ['rf']
+    # n_estimators = [10, 20, 50]
+    # criterion = ['gini']
+    # max_depth = [None, 5, 10, 20]
+    # min_imp_split = [1e-5, 1e-7, 1e-9]
+
     model = ['rf']
-    n_estimators = [10, 20, 50]
+    n_estimators = [50]
     criterion = ['gini']
-    max_depth = [None, 5, 10, 20]
-    min_imp_split = [1e-5, 1e-7, 1e-9]
+    max_depth = [20]
+    min_imp_split = [1e-7]
+
     grid = itertools.product(model,
                              n_estimators,
                              criterion,
@@ -141,7 +164,9 @@ def random_forest(X, y, outdir):
     for combination in grid:
         for i, param in enumerate(params_list):
             params[param] = combination[i]
-        run_model(X, y, outdir, **params)
+        classifier = run_model(X, y, outdir, **params)
+
+    return classifier
 
 
 def run_model(X, y, outdir, **params):
@@ -151,9 +176,9 @@ def run_model(X, y, outdir, **params):
         with open(outfile, 'w') as f:
             for param in params:
                 f.write('{},'.format(param))
-            f.write('Error,AUPRC,AUROC,Fold\n')            
+            f.write('Accuracy,AUPRC,AUROC,Fold\n')
 
-    errors = []
+    accuracies = []
     auprcs = []
     aurocs = []
     prc_fig = plt.figure()
@@ -169,7 +194,12 @@ def run_model(X, y, outdir, **params):
                             random_state=seed)
 
     fold = 1
+
+    import time
+    start = time.time()
+
     for train, test in splitter.split(X):
+        print time.time() - start
         X_trn = X[train]
         y_trn = y[train]
         X_val = X[test]
@@ -178,28 +208,28 @@ def run_model(X, y, outdir, **params):
         classifier = build_classifier(**params)
         classifier.fit(X_trn, y_trn)
 
-        error, auprc, auroc = analyze(classifier,
-                                      X_val,
-                                      y_val,
-                                      prc_ax,
-                                      roc_ax,
-                                      **params)
-        errors.append(error)
+        accuracy, auprc, auroc = analyze(classifier,
+                                         X_val,
+                                         y_val,
+                                         prc_ax,
+                                         roc_ax,
+                                         **params)
+        accuracies.append(accuracy)
         auprcs.append(auprc)
         aurocs.append(auroc)
 
         with open(outfile, 'a') as f:
             for param in params:
                 f.write('{},'.format(params[param]))
-            f.write('{},{},{},{}\n'.format(error,
+            f.write('{},{},{},{}\n'.format(accuracy,
                                            auprc,
                                            auroc,
                                            fold))
 
         fold += 1
 
-    n_folds = len(errors)
-    avg_error = sum(errors)/n_folds
+    n_folds = len(accuracies)
+    avg_accuracy = sum(accuracies)/n_folds
     avg_auprc = sum(auprcs)/n_folds
     avg_auroc = sum(aurocs)/n_folds
 
@@ -207,7 +237,7 @@ def run_model(X, y, outdir, **params):
     with open(outfile, 'a') as f:
         for param in params:
             f.write('{},'.format(params[param]))
-        f.write('{},{},{},AVG\n'.format(avg_error,
+        f.write('{},{},{},AVG\n'.format(avg_accuracy,
                                         avg_auprc,
                                         avg_auroc,))
 
@@ -236,27 +266,27 @@ def run_model(X, y, outdir, **params):
     roc_fig.savefig(outdir + 'ROC{}'.format(name)+".png")
     plt.close(roc_fig)
 
-    return
+    return classifier
 
 
 def build_classifier(**params):
 
     if params['model'] is'logistic':
-        print ('logistic')
+        print "logistic"
         return LogisticRegression(penalty=params['penalty'],
                                   C=params['C'],
                                   random_state=seed,
                                   class_weight='balanced')
 
     if params['model'] is 'svm':
-        print ('svm')
+        print "svm"
         return SVC(C=params['C'],
                    kernel=params['kernel'],
                    random_state=seed,
                    class_weight='balanced')
 
     if params['model'] is 'rf':
-        print ('rf')
+        print "rf"
         return RandomForestClassifier(n_estimators=params['n_estimators'],
                                       criterion=params['criterion'],
                                       max_depth=params['max_depth'],
@@ -271,16 +301,14 @@ def build_classifier(**params):
 
 def analyze(classifier, X_val, y_val, prc_ax, roc_ax, **params):
 
-
-    #y_predict = classifier.predict(X_val)
+    # y_predict = classifier.predict(X_val)
     if params['model'] is 'svm' or params['model'] is 'logistic':
         y_predict = classifier.decision_function(X_val)
     else:
-        y_predict = classifier.predict_proba(X_val)[:,1]
-        print(np.shape(y_predict))
+        y_predict = classifier.predict_proba(X_val)[:, 1]
 
-    # Error (1-Accuracy)
-    error = classifier.score(X_val, y_val)
+    # Accuracy
+    accuracy = classifier.score(X_val, y_val)
 
     # Precision-Recall
     auprc = prc_score(y_val, y_predict)
@@ -292,7 +320,44 @@ def analyze(classifier, X_val, y_val, prc_ax, roc_ax, **params):
     auroc = roc_score(fpr, tpr)
     roc_ax.plot(fpr, tpr, label='AUC={}'.format(auroc))
 
-    return error, auprc, auroc
+    return accuracy, auprc, auroc
+
+
+def feature_extraction(clfr_log, clfr_svm, clfr_rf, outdir):
+
+    df = pd.read_csv(datafile, header=0, index_col=0).dropna(axis=0)
+    features_list = df.columns.values.tolist()
+    for col in ('res_id',
+                'y_label',
+                'pdb',
+                'chain'):
+        features_list.remove(col)
+
+    outfile = outdir + 'feature_extraction.txt'
+    n = 10
+
+    weights_log = clfr_log.coef_
+    best_features_log = weights_log.argsort().T[::-1][:n].tolist()
+
+    weights_svm = clfr_svm.coef_
+    best_features_svm = weights_svm.argsort().T[::-1][:n].tolist()
+
+    weights_rf = clfr_rf.feature_importances_
+    best_features_rf = weights_rf.argsort()[::-1][:n].tolist()
+
+    with open(outfile, 'w') as f:
+        f.write('Best Features for Logistic: \n')
+        for index in best_features_log:
+            f.write('{}, {}\n'.format(features_list[index[0]],
+                                      weights_log[0, index[0]]))
+        f.write('\nBest Features for SVM: \n')
+        for index in best_features_svm:
+            f.write('{}, {}\n'.format(features_list[index[0]],
+                                      weights_svm[0, index[0]]))
+        f.write('\nBest Features for Random Forest: \n')
+        for index in best_features_rf:
+            f.write('{}, {}\n'.format(features_list[index],
+                                      weights_rf[index]))
 
 
 if __name__ == '__main__':
@@ -300,8 +365,9 @@ if __name__ == '__main__':
     outdir = os.getcwd() + '/output/'
     if not os.path.exists(outdir):
         os.makedirs(outdir)
-    X, y = preprocess(datafile, load=True)
-    # X, y = preprocess(datafile, load=False)
-    logistic_regression(X, y, outdir)
-    # svm(X, y, outdir)
-    random_forest(X, y, outdir)
+    # X, y = preprocess(datafile, load=True)
+    X, y = preprocess(datafile, load=False)
+    clfr_log = logistic_regression(X, y, outdir)
+    clfr_svm = svm(X, y, outdir)
+    clfr_rf = random_forest(X, y, outdir)
+    feature_extraction(clfr_log, clfr_svm, clfr_rf, outdir)
